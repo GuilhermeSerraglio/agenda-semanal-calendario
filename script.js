@@ -23,9 +23,16 @@ import {
 
 let tarefas = [];
 let dataAtual = new Date();
+let mostrarSomenteFavoritas = false; // NOVO: controla filtro de favoritas
 
 function formatarData(data) {
   return data.toISOString().split('T')[0];
+}
+
+// 👉 NOVA FUNÇÃO PARA FORMATO BRASILEIRO
+function formatarDataBR(data) {
+  if (typeof data === "string") data = new Date(data);
+  return data.toLocaleDateString('pt-BR');
 }
 
 function atualizarSemana() {
@@ -35,7 +42,10 @@ function atualizarSemana() {
   const fim = new Date(inicio);
   fim.setDate(inicio.getDate() + 6);
 
-  document.getElementById("semana-atual").textContent = `${formatarData(inicio)} até ${formatarData(fim)}`;
+  // EXIBE O INTERVALO NO FORMATO BRASILEIRO
+  document.getElementById("semana-atual").textContent =
+    `${formatarDataBR(inicio)} até ${formatarDataBR(fim)}`;
+
   exibirTarefas();
 }
 
@@ -53,12 +63,38 @@ function getDataPorDiaSemana(nomeDia) {
   return formatarData(inicio);
 }
 
+// 🔔 Checar se data já passou
+function dataEhPassada(dataStr) {
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0); // Zera horas para comparar só data
+  const data = new Date(dataStr + "T00:00:00");
+  return data < hoje;
+}
+
+// ABRIR MODAL PARA NOVA TAREFA
 window.abrirModal = function (dia) {
   document.getElementById("modalTarefa").style.display = "flex";
   document.getElementById("dia").value = dia;
   document.getElementById("data").value = getDataPorDiaSemana(dia);
+
+  const form = document.getElementById("formTarefa");
+  // Remove qualquer evento anterior
+  form.onsubmit = null;
+  // Definir submit para criar nova tarefa
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const nova = obterDadosFormulario();
+    if (dataEhPassada(nova.data)) {
+      const confirma = confirm("A data escolhida já passou. Tem certeza que deseja adicionar a tarefa mesmo assim?");
+      if (!confirma) return;
+    }
+    await addDoc(collection(window.db, "tarefas"), nova);
+    fecharModal();
+    exibirTarefas();
+  };
 };
 
+// FECHAR MODAL (sempre remove eventos)
 window.fecharModal = function () {
   document.getElementById("modalTarefa").style.display = "none";
   document.getElementById("formTarefa").reset();
@@ -102,7 +138,9 @@ async function exibirTarefas() {
     tarefas.push(tarefa);
   });
 
+  // NOVO: filtra favoritas se estiver ativo
   tarefas.forEach(t => {
+    if (mostrarSomenteFavoritas && !t.favorita) return;
     const dataTarefa = new Date(t.data);
     if (
       (t.data >= inicio && t.data <= fim) ||
@@ -130,17 +168,18 @@ function getNomeDiaSemana(dataStr) {
   return dias[date.getDay()];
 }
 
+// 👇 AGORA O CARD DA TAREFA FICA COM BORDA GROSSA E ESTRELA PRETA DENTRO DA BORDA SE FOR FAVORITO
 function adicionarNaTela(tarefa) {
-  // Determina o dia correto com base na data
   const diaSemana = getNomeDiaSemana(tarefa.data);
   const container = document.getElementById(diaSemana);
-  if (!container) return; // caso o ID do dia não exista
+  if (!container) return;
   const div = document.createElement("div");
-  div.className = `tarefa ${tarefa.prioridade}`;
+  div.className = `tarefa ${tarefa.prioridade}${tarefa.favorita ? ' favorita' : ''}`;
   div.innerHTML = `
+    ${tarefa.favorita ? `<span class="estrela-borda">★</span>` : ''}
     <strong>${tarefa.hora} - ${tarefa.titulo}</strong><br>
     ${tarefa.descricao}<br>
-    ${tarefa.data}<br>
+    ${formatarDataBR(tarefa.data)}<br>
     <div class="acoes">
       <button onclick="favoritarTarefa('${tarefa.id}')">${tarefa.favorita ? "★" : "☆"}</button>
       <button onclick="editarTarefa('${tarefa.id}')">✎</button>
@@ -150,16 +189,17 @@ function adicionarNaTela(tarefa) {
   container.appendChild(div);
 }
 
-
 window.removerTarefa = async function (id) {
   await deleteDoc(doc(window.db, "tarefas", id));
   exibirTarefas();
 };
 
+// ABRIR MODAL PARA EDIÇÃO DE TAREFA
 window.editarTarefa = function (id) {
   const tarefa = tarefas.find(t => t.id === id);
   if (!tarefa) return;
   abrirModal(tarefa.dia);
+
   document.getElementById("titulo").value = tarefa.titulo;
   document.getElementById("descricao").value = tarefa.descricao;
   document.getElementById("hora").value = tarefa.hora;
@@ -167,9 +207,18 @@ window.editarTarefa = function (id) {
   document.getElementById("data").value = tarefa.data;
   document.getElementById("prioridade").value = tarefa.prioridade || "media";
   document.getElementById("recorrencia").value = tarefa.recorrencia || "nenhuma";
-  document.getElementById("formTarefa").onsubmit = async (e) => {
+
+  const form = document.getElementById("formTarefa");
+  // Remove qualquer evento anterior
+  form.onsubmit = null;
+  // Definir submit para atualizar tarefa existente
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const atualizada = obterDadosFormulario();
+    if (dataEhPassada(atualizada.data)) {
+      const confirma = confirm("A data escolhida já passou. Tem certeza que deseja salvar a tarefa mesmo assim?");
+      if (!confirma) return;
+    }
     await updateDoc(doc(window.db, "tarefas", id), atualizada);
     fecharModal();
     exibirTarefas();
@@ -191,17 +240,13 @@ function obterDadosFormulario() {
     data: document.getElementById("data").value,
     prioridade: document.getElementById("prioridade").value,
     recorrencia: document.getElementById("recorrencia").value,
-    uid: user.uid
+    uid: user.uid,
+    favorita: false // por padrão, tarefas novas não são favoritas
   };
 }
 
-document.getElementById("formTarefa").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const nova = obterDadosFormulario();
-  await addDoc(collection(window.db, "tarefas"), nova);
-  fecharModal();
-  exibirTarefas();
-});
+// NÃO PRECISA MAIS DO SUBMIT GLOBAL
+// document.getElementById("formTarefa").addEventListener("submit", ...);
 
 window.imprimirAgenda = function () {
   window.print();
@@ -270,11 +315,18 @@ window.filtrarTarefas = async function () {
   const datas = resultados.map(t => new Date(t.data));
   const dataMin = new Date(Math.min(...datas));
   const dataMax = new Date(Math.max(...datas));
-  const formatarData = d => d.toISOString().split("T")[0];
-  const intervalo = `Resultados: ${formatarData(dataMin)} até ${formatarData(dataMax)}`;
+  const intervalo = `Resultados: ${formatarDataBR(dataMin)} até ${formatarDataBR(dataMax)}`;
   document.getElementById("semana-atual").textContent = intervalo;
 
   resultados.forEach(adicionarNaTela);
+};
+
+// NOVO: função para ativar/desativar filtro de favoritas
+window.toggleFavoritas = function () {
+  mostrarSomenteFavoritas = !mostrarSomenteFavoritas;
+  const btn = document.getElementById("filtroFavoritas");
+  btn.textContent = mostrarSomenteFavoritas ? "Todas" : "Favoritos";
+  exibirTarefas();
 };
 
 let grafico = null;
