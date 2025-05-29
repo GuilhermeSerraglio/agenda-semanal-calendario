@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -35,36 +34,33 @@
     window.signOut = () => signOut(auth).then(() => window.location.href = "login.html");
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
 <body>
   <div class="btn-top-left">
     <button class="btn-sair" onclick="signOut()">Sair</button>
   </div>
   
-
   <h1>Agenda Semanal</h1>
 
-<div class="filtro-abaixo-titulo">
-  <input type="text" id="filtro" placeholder="Filtrar tarefas..." oninput="filtrarTarefas()" />
-</div>
+  <div class="filtro-abaixo-titulo">
+    <input type="text" id="filtro" placeholder="Filtrar tarefas..." oninput="filtrarTarefas()" />
+    <!-- Botão de filtro de favoritas -->
+    <button id="filtroFavoritas" onclick="toggleFavoritas()" style="margin-left: 10px; padding: 7px 15px; background: #FFD700; color: #222; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+      Mostrar apenas favoritas
+    </button>
+  </div>
 
-<div class="btn-top-right">
-  <button id="temaToggle" onclick="alternarTema()">🌓 Tema</button>
-  <button class="btn-imprimir" onclick="imprimirAgenda()">🖶 Imprimir</button>
-  <button onclick="window.location.href='calendario.html'" class="btn-imprimir" style="background-color: #607d8b;">Calendário Mensal</button>
-</div>
+  <div class="btn-top-right">
+    <button id="temaToggle" onclick="alternarTema()">🌓 Tema</button>
+    <button class="btn-imprimir" onclick="imprimirAgenda()">🖶 Imprimir</button>
+    <button onclick="window.location.href='calendario.html'" class="btn-imprimir" style="background-color: #607d8b;">Calendário Mensal</button>
+  </div>
 
-
-
-
-
-<div class="semana-nav-container">
-  <button class="btn-semana" onclick="alterarSemana(-1)">← Semana Anterior</button>
-  <div class="semana-range" id="semana-atual">Carregando...</div>
-  <button class="btn-semana" onclick="alterarSemana(1)">Próxima Semana →</button>
-</div>
-
+  <div class="semana-nav-container">
+    <button class="btn-semana" onclick="alterarSemana(-1)">← Semana Anterior</button>
+    <div class="semana-range" id="semana-atual">Carregando...</div>
+    <button class="btn-semana" onclick="alterarSemana(1)">Próxima Semana →</button>
+  </div>
 
   <div class="agenda">
     <div id="domingo" class="dia"><h2>Domingo <button class="btn-add" onclick="abrirModal('domingo')">+</button></h2></div>
@@ -77,9 +73,8 @@
   </div>
   
   <h2 style="text-align: center; margin-top: 40px;">Relatório da Semana</h2>
-<canvas id="graficoPrioridade" style="max-width: 400px; margin: auto;"></canvas>
-<p style="text-align: center; margin-top: 10px;" id="totalTarefas"></p>
-
+  <canvas id="graficoPrioridade" style="max-width: 400px; margin: auto;"></canvas>
+  <p style="text-align: center; margin-top: 10px;" id="totalTarefas"></p>
 
   <div id="modalTarefa" class="modal">
     <div class="modal-conteudo">
@@ -107,7 +102,6 @@
           <option value="semanal">Semanal</option>
           <option value="mensal">Mensal</option>
         </select>
-
         <button type="submit">Salvar</button>
       </form>
     </div>
