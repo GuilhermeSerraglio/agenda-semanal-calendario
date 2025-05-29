@@ -297,3 +297,96 @@ body.escuro .modal-conteudo textarea::placeholder {
 #recorrencia {
   margin-top: 8px;
 }
+
+/* Mobile: ocupar 100vw sem centralizar card */
+@media (max-width: 700px) {
+  body {
+    background: #111 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .agenda, .calendario-grid {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 0 40px 0 !important;
+    justify-content: stretch !important;
+  }
+  .dia, .cal-dia {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 12px;
+    box-sizing: border-box;
+    font-size: 16px !important;
+    padding: 14px 10px !important;
+  }
+  .cal-dia-header {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    font-size: 14px !important;
+    box-sizing: border-box;
+    padding: 5px 0 !important;
+    border-radius: 8px;
+  }
+  .tarefa {
+    font-size: 15px !important;
+    padding: 11px !important;
+    border-radius: 8px;
+  }
+  .btn-top-right {
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 4px !important;
+    top: 10px !important;
+    right: 5vw !important;
+    z-index: 10 !important;
+  }
+  h1 {
+    font-size: 1.25rem !important;
+    text-align: center !important;
+    margin: 14px 0 10px 0 !important;
+  }
+}
+
+/* Ajuste para garantir fundo da tela todo */
+html, body {
+  width: 100vw !important;
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+.tarefa.favorita {
+  border-left: 14px solid #FFD700;
+  background: #fffde4 !important;
+  position: relative;
+  box-shadow: 0 2px 24px 0 rgba(255,215,0,0.12);
+  /* Para garantir espaço lateral, se necessário */
+}
+
+.tarefa.favorita .estrela-borda {
+  position: absolute;
+  left: -14px; /* exatamente na borda */
+  top: 50%;
+  transform: translateY(-50%);
+  color: #222;
+  font-size: 1.15em;
+  font-weight: bold;
+  width: 14px; /* igual à borda */
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  z-index: 3;
+  pointer-events: none;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  text-shadow: 0 0 4px #fffde4, 0 1px 1px #fffde4;
+}
+
+
