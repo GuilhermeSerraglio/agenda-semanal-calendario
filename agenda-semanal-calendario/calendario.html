@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Calendário Mensal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+    import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5FFmJckrv7xC5CXZB_tjRtnzz0ME0JAg",
+      authDomain: "calendario-semanal-gui.firebaseapp.com",
+      projectId: "calendario-semanal-gui",
+      storageBucket: "calendario-semanal-gui.firebasestorage.app",
+      messagingSenderId: "169724988024",
+      appId: "1:169724988024:web:402e654012ad570493fb8d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.auth = auth;
+    window.db = db;
+    window.signOut = () => signOut(auth).then(() => window.location.href = "login.html");
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) window.location.href = 'login.html';
+      else renderizarCalendario();
+    });
+
+    // ===== Tema escuro/claro =====
+    function aplicarTema() {
+      const tema = localStorage.getItem("tema") || "claro";
+      document.body.className = tema;
+    }
+    function alternarTema() {
+      const novoTema = document.body.className === "escuro" ? "claro" : "escuro";
+      document.body.className = novoTema;
+      localStorage.setItem("tema", novoTema);
+    }
+    window.aplicarTema = aplicarTema;
+    window.alternarTema = alternarTema;
+    aplicarTema();
+
+    // ================== Lógica Calendário Mensal ===================
+    const nomesMes = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    let dataAtualCalendario = new Date();
+    dataAtualCalendario.setDate(1);
+
+    window.alterarMes = function (direcao) {
+      dataAtualCalendario.setMonth(dataAtualCalendario.getMonth() + direcao);
+      renderizarCalendario();
+    };
+
+    async function renderizarCalendario() {
+      const ano = dataAtualCalendario.getFullYear();
+      const mes = dataAtualCalendario.getMonth();
+      document.getElementById("mes-atual").textContent =
+        `${nomesMes[mes]} de ${ano}`;
+
+      const primeiroDia = new Date(ano, mes, 1);
+      const ultimoDia = new Date(ano, mes + 1, 0);
+      const primeiroDiaSemana = primeiroDia.getDay();
+
+      // Busca tarefas do mês
+      const tarefasMes = await buscarTarefasDoMes(ano, mes);
+
+      let html = `<div class="calendario-grid">
+        <div class="cal-dia-header">Dom</div>
+        <div class="cal-dia-header">Seg</div>
+        <div class="cal-dia-header">Ter</div>
+        <div class="cal-dia-header">Qua</div>
+        <div class="cal-dia-header">Qui</div>
+        <div class="cal-dia-header">Sex</div>
+        <div class="cal-dia-header">Sáb</div>
+      `;
+
+      for (let i = 0; i < primeiroDiaSemana; i++) {
+        html += `<div class="cal-dia vazio"></div>`;
+      }
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        // Filtra tarefas do dia
+        const tarefasDia = tarefasMes.filter(t => t.data === dataStr ||
+          (t.recorrencia === "mensal" && new Date(t.data).getDate() === dia) ||
+          (t.recorrencia === "semanal" && new Date(t.data).getDay() === new Date(ano, mes, dia).getDay())
+        );
+        html += `<div class="cal-dia" onclick="abrirModalDia('${dataStr}')">
+          <div class="cal-dia-num">${dia}</div>
+          <div class="cal-tarefas-list">
+            ${tarefasDia.map(t => `
+              <div class="tarefa ${t.prioridade}">
+                <strong>${t.hora} - ${t.titulo}</strong>
+                <div style="font-size:12px">${t.descricao}</div>
+                <div style="font-size:11px">${t.prioridade.toUpperCase()}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }
+      html += "</div>";
+      document.getElementById("calendario-mes").innerHTML = html;
+    }
+
+    // Busca tarefas no Firestore (versão modular)
+    async function buscarTarefasDoMes(ano, mes) {
+      if (!window.db || !window.auth) return [];
+      const user = window.auth.currentUser;
+      if (!user) return [];
+      const ref = collection(window.db, "tarefas");
+      const q = query(ref, where("uid", "==", user.uid));
+      const snapshot = await getDocs(q);
+
+      const inicioMes = new Date(ano, mes, 1);
+      const fimMes = new Date(ano, mes + 1, 0);
+
+      const tarefas = [];
+      snapshot.forEach(docSnap => {
+        const t = docSnap.data();
+        t.id = docSnap.id;
+        const dataT = new Date(t.data);
+        if (
+          (dataT >= inicioMes && dataT <= fimMes) ||
+          t.recorrencia === "mensal" ||
+          t.recorrencia === "semanal"
+        ) {
+          tarefas.push(t);
+        }
+      });
+      return tarefas;
+    }
+
+    // Modal
+    window.abrirModalDia = function (dataStr) {
+      const data = new Date(dataStr);
+      const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+      document.getElementById("modalTarefa").style.display = "flex";
+      document.getElementById("dia").value = dias[data.getDay()];
+      document.getElementById("data").value = dataStr;
+    };
+
+    window.fecharModal = function () {
+      document.getElementById("modalTarefa").style.display = "none";
+      document.getElementById("formTarefa").reset();
+      document.getElementById("formTarefa").onsubmit = null;
+    };
+
+    document.getElementById("formTarefa").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const user = window.auth?.currentUser;
+      if (!user) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+      const tarefa = {
+        titulo: document.getElementById("titulo").value,
+        descricao: document.getElementById("descricao").value,
+        hora: document.getElementById("hora").value,
+        dia: document.getElementById("dia").value,
+        data: document.getElementById("data").value,
+        prioridade: document.getElementById("prioridade").value,
+        recorrencia: document.getElementById("recorrencia").value,
+        uid: user.uid
+      };
+      await addDoc(collection(window.db, "tarefas"), tarefa);
+      window.fecharModal();
+      renderizarCalendario();
+    });
+
+  </script>
+  <style>
+    .calendario-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .cal-dia-header {
+      text-align: center;
+      font-weight: bold;
+      background: #f1f1f1;
+      border-radius: 4px;
+      padding: 6px 0;
+    }
+    .cal-dia {
+      min-height: 90px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 4px 4px 4px;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid #eee;
+      transition: box-shadow 0.2s;
+    }
+    .cal-dia:hover { box-shadow: 0 2px 10px rgba(60,60,60,0.09);}
+    .cal-dia.vazio { background: none; border: none; cursor: default;}
+    .cal-dia-num {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 2px;
+      color: #607d8b;
+    }
+    .cal-tarefas-list { max-height: 64px; overflow-y: auto; }
+    @media (max-width: 900px) { .calendario-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 500px) { .calendario-grid { grid-template-columns: 1fr; } }
+    body.escuro .cal-dia-header { background: #2c2c2c; color: #fff; }
+    body.escuro .cal-dia { background: #1e1e1e; border-color: #333; }
+    body.escuro .cal-dia-num { color: #fbc02d; }
+  </style>
+</head>
+<body>
+  <div class="btn-top-left">
+    <button class="btn-sair" onclick="signOut()">Sair</button>
+  </div>
+  <div class="btn-top-right">
+  <button id="temaToggle" onclick="alternarTema()">🌓 Tema</button>
+  <button class="btn-imprimir" onclick="window.print()">🖶 Imprimir</button>
+  <button onclick="window.location.href='index.html'" class="btn-imprimir" style="background-color: #607d8b;">Agenda Semanal</button>
+</div>
+
+
+  <h1>Calendário Mensal</h1>
+  <div class="mes-nav-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 18px;">
+    <button class="btn-semana" onclick="alterarMes(-1)">← Mês Anterior</button>
+    <div class="mes-range" id="mes-atual">Carregando...</div>
+    <button class="btn-semana" onclick="alterarMes(1)">Próximo Mês →</button>
+  </div>
+  <div class="calendario-mes" id="calendario-mes"></div>
+
+  <!-- Modal tarefa igual ao da agenda -->
+  <div id="modalTarefa" class="modal">
+    <div class="modal-conteudo">
+      <span class="fechar" onclick="fecharModal()">&times;</span>
+      <form id="formTarefa">
+        <label>Título:</label>
+        <input type="text" id="titulo" required>
+        <label>Descrição:</label>
+        <input type="text" id="descricao" required>
+        <label>Hora:</label>
+        <input type="time" id="hora" required>
+        <label>Dia da Semana:</label>
+        <input type="text" id="dia" readonly style="background-color: #f3f3f3; cursor: not-allowed; font-weight: bold;" />
+        <label>Data:</label>
+        <input type="date" id="data" required>
+        <label>Prioridade:</label>
+        <select id="prioridade" required>
+          <option value="alta">Alta</option>
+          <option value="media" selected>Média</option>
+          <option value="baixa">Baixa</option>
+        </select>
+        <label>Recorrência:</label>
+        <select id="recorrencia" required>
+          <option value="nenhuma" selected>Nenhuma</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensal">Mensal</option>
+        </select>
+        <button type="submit">Salvar</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
