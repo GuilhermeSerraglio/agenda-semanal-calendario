@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Agenda Semanal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5FFmJckrv7xC5CXZB_tjRtnzz0ME0JAg",
+      authDomain: "calendario-semanal-gui.firebaseapp.com",
+      projectId: "calendario-semanal-gui",
+      storageBucket: "calendario-semanal-gui.firebasestorage.app",
+      messagingSenderId: "169724988024",
+      appId: "1:169724988024:web:402e654012ad570493fb8d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+      }
+    });
+
+    window.auth = auth;
+    window.db = db;
+    window.signOut = () => signOut(auth).then(() => window.location.href = "login.html");
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+  <div class="btn-top-left">
+    <button class="btn-sair" onclick="signOut()">Sair</button>
+  </div>
+  
+
+  <h1>Agenda Semanal</h1>
+
+<div class="filtro-abaixo-titulo">
+  <input type="text" id="filtro" placeholder="Filtrar tarefas..." oninput="filtrarTarefas()" />
+</div>
+
+<div class="btn-top-right">
+  <button id="temaToggle" onclick="alternarTema()">🌓 Tema</button>
+  <button class="btn-imprimir" onclick="imprimirAgenda()">🖶 Imprimir</button>
+  <button onclick="window.location.href='calendario.html'" class="btn-imprimir" style="background-color: #607d8b;">Calendário Mensal</button>
+</div>
+
+
+
+
+
+<div class="semana-nav-container">
+  <button class="btn-semana" onclick="alterarSemana(-1)">← Semana Anterior</button>
+  <div class="semana-range" id="semana-atual">Carregando...</div>
+  <button class="btn-semana" onclick="alterarSemana(1)">Próxima Semana →</button>
+</div>
+
+
+  <div class="agenda">
+    <div id="domingo" class="dia"><h2>Domingo <button class="btn-add" onclick="abrirModal('domingo')">+</button></h2></div>
+    <div id="segunda" class="dia"><h2>Segunda <button class="btn-add" onclick="abrirModal('segunda')">+</button></h2></div>
+    <div id="terca" class="dia"><h2>Terça <button class="btn-add" onclick="abrirModal('terca')">+</button></h2></div>
+    <div id="quarta" class="dia"><h2>Quarta <button class="btn-add" onclick="abrirModal('quarta')">+</button></h2></div>
+    <div id="quinta" class="dia"><h2>Quinta <button class="btn-add" onclick="abrirModal('quinta')">+</button></h2></div>
+    <div id="sexta" class="dia"><h2>Sexta <button class="btn-add" onclick="abrirModal('sexta')">+</button></h2></div>
+    <div id="sabado" class="dia"><h2>Sábado <button class="btn-add" onclick="abrirModal('sabado')">+</button></h2></div>
+  </div>
+  
+  <h2 style="text-align: center; margin-top: 40px;">Relatório da Semana</h2>
+<canvas id="graficoPrioridade" style="max-width: 400px; margin: auto;"></canvas>
+<p style="text-align: center; margin-top: 10px;" id="totalTarefas"></p>
+
+
+  <div id="modalTarefa" class="modal">
+    <div class="modal-conteudo">
+      <span class="fechar" onclick="fecharModal()">&times;</span>
+      <form id="formTarefa">
+        <label>Título:</label>
+        <input type="text" id="titulo" required>
+        <label>Descrição:</label>
+        <input type="text" id="descricao" required>
+        <label>Hora:</label>
+        <input type="time" id="hora" required>
+        <label>Dia da Semana:</label>
+        <input type="text" id="dia" readonly style="background-color: #f3f3f3; cursor: not-allowed; font-weight: bold;" />
+        <label>Data:</label>
+        <input type="date" id="data" required>
+        <label>Prioridade:</label>
+        <select id="prioridade" required>
+          <option value="alta">Alta</option>
+          <option value="media" selected>Média</option>
+          <option value="baixa">Baixa</option>
+        </select>
+        <label>Recorrência:</label>
+        <select id="recorrencia" required>
+          <option value="nenhuma" selected>Nenhuma</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensal">Mensal</option>
+        </select>
+
+        <button type="submit">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
