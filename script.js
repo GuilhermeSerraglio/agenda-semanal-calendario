@@ -190,9 +190,12 @@ function adicionarNaTela(tarefa) {
 }
 
 window.removerTarefa = async function (id) {
+  const confirmar = window.confirm("Tem certeza que deseja excluir esta tarefa?");
+  if (!confirmar) return;
   await deleteDoc(doc(window.db, "tarefas", id));
   exibirTarefas();
 };
+
 
 // ABRIR MODAL PARA EDIÇÃO DE TAREFA
 window.editarTarefa = function (id) {
